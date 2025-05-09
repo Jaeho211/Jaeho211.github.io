@@ -11,6 +11,32 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 		<link rel="stylesheet" href="assets/css/main.css" />
 		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+		<style>
+			#gameContainer {
+				position: relative;
+				margin: 20px auto;
+				text-align: center;
+			}
+			#gameCanvas {
+				border: 2px solid #333;
+				background: #fff;
+				max-width: 100%;
+				height: auto;
+			}
+			#score {
+				position: absolute;
+				top: 10px;
+				left: 10px;
+				font-size: 20px;
+				color: #333;
+			}
+			#instructions {
+				position: absolute;
+				bottom: 10px;
+				left: 10px;
+				color: #666;
+			}
+		</style>
 	</head>
 	<body class="is-preload">
 
@@ -35,7 +61,7 @@
 								<li><a href="#work">Work</a></li>
 								<li><a href="#about">About</a></li>
 								<li><a href="#contact">Contact</a></li>
-								<li><a href="archery.html">양궁 게임</a></li>
+								<li><a href="#archery">양궁 게임</a></li>
 								<!--<li><a href="#elements">Elements</a></li>-->
 							</ul>
 						</nav>
@@ -98,6 +124,19 @@
 								</ul>
 							</article>
 
+						<!-- Archery Game -->
+							<article id="archery">
+								<h2 class="major">양궁 게임</h2>
+								<div id="gameContainer">
+									<canvas id="gameCanvas" width="800" height="600"></canvas>
+									<div id="score">점수: 0</div>
+									<div id="instructions">
+										마우스로 조준하고 클릭하여 발사하세요!<br>
+										화살이 과녁의 중앙에 가까울수록 높은 점수를 얻습니다.
+									</div>
+								</div>
+							</article>
+
 					</div>
 
 				<!-- Footer -->
@@ -116,6 +155,155 @@
 			<script src="assets/js/breakpoints.min.js"></script>
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
+			<script>
+				// 게임 변수들
+				const canvas = document.getElementById('gameCanvas');
+				const ctx = canvas.getContext('2d');
+				const scoreElement = document.getElementById('score');
+				
+				let score = 0;
+				let bowX = 100;
+				let bowY = canvas.height / 2;
+				let targetX = canvas.width - 100;
+				let targetY = canvas.height / 2;
+				let arrowX = bowX;
+				let arrowY = bowY;
+				let isArrowFlying = false;
+				let arrowSpeed = 0;
+				let arrowAngle = 0;
+				
+				// 과녁 그리기
+				function drawTarget() {
+					ctx.beginPath();
+					ctx.arc(targetX, targetY, 50, 0, Math.PI * 2);
+					ctx.fillStyle = '#ff0000';
+					ctx.fill();
+					ctx.closePath();
+					
+					ctx.beginPath();
+					ctx.arc(targetX, targetY, 35, 0, Math.PI * 2);
+					ctx.fillStyle = '#fff';
+					ctx.fill();
+					ctx.closePath();
+					
+					ctx.beginPath();
+					ctx.arc(targetX, targetY, 20, 0, Math.PI * 2);
+					ctx.fillStyle = '#ff0000';
+					ctx.fill();
+					ctx.closePath();
+					
+					ctx.beginPath();
+					ctx.arc(targetX, targetY, 5, 0, Math.PI * 2);
+					ctx.fillStyle = '#fff';
+					ctx.fill();
+					ctx.closePath();
+				}
+				
+				// 활 그리기
+				function drawBow() {
+					ctx.beginPath();
+					ctx.moveTo(bowX, bowY - 20);
+					ctx.lineTo(bowX, bowY + 20);
+					ctx.strokeStyle = '#8B4513';
+					ctx.lineWidth = 5;
+					ctx.stroke();
+					ctx.closePath();
+				}
+				
+				// 화살 그리기
+				function drawArrow() {
+					if (isArrowFlying) {
+						ctx.save();
+						ctx.translate(arrowX, arrowY);
+						ctx.rotate(arrowAngle);
+						
+						ctx.beginPath();
+						ctx.moveTo(0, 0);
+						ctx.lineTo(30, 0);
+						ctx.strokeStyle = '#000';
+						ctx.lineWidth = 2;
+						ctx.stroke();
+						
+						// 화살촉
+						ctx.beginPath();
+						ctx.moveTo(30, 0);
+						ctx.lineTo(25, -5);
+						ctx.lineTo(25, 5);
+						ctx.fillStyle = '#000';
+						ctx.fill();
+						
+						ctx.restore();
+					}
+				}
+				
+				// 게임 업데이트
+				function update() {
+					if (isArrowFlying) {
+						arrowX += Math.cos(arrowAngle) * arrowSpeed;
+						arrowY += Math.sin(arrowAngle) * arrowSpeed;
+						
+						// 화살이 과녁에 닿았는지 확인
+						const distance = Math.sqrt(
+							Math.pow(arrowX - targetX, 2) + 
+							Math.pow(arrowY - targetY, 2)
+						);
+						
+						if (distance < 50) {
+							// 점수 계산 (중앙에 가까울수록 높은 점수)
+							const points = Math.floor((50 - distance) * 2);
+							score += points;
+							scoreElement.textContent = `점수: ${score}`;
+							resetArrow();
+						}
+						
+						// 화살이 화면을 벗어났는지 확인
+						if (arrowX > canvas.width || arrowX < 0 || 
+							arrowY > canvas.height || arrowY < 0) {
+							resetArrow();
+						}
+					}
+				}
+				
+				// 화살 초기화
+				function resetArrow() {
+					isArrowFlying = false;
+					arrowX = bowX;
+					arrowY = bowY;
+				}
+				
+				// 게임 루프
+				function gameLoop() {
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+					
+					drawTarget();
+					drawBow();
+					drawArrow();
+					update();
+					
+					requestAnimationFrame(gameLoop);
+				}
+				
+				// 마우스 이벤트 처리
+				canvas.addEventListener('mousemove', (e) => {
+					const rect = canvas.getBoundingClientRect();
+					const mouseX = e.clientX - rect.left;
+					const mouseY = e.clientY - rect.top;
+					
+					if (!isArrowFlying) {
+						arrowAngle = Math.atan2(mouseY - bowY, mouseX - bowX);
+					}
+				});
+				
+				canvas.addEventListener('click', () => {
+					if (!isArrowFlying) {
+						isArrowFlying = true;
+						arrowSpeed = 15;
+					}
+				});
+				
+				// 게임 시작
+				gameLoop();
+			</script>
 
 	</body>
 </html>
