@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>양궁 게임</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #gameContainer {
+            position: relative;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+            background: #fff;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: #333;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: #666;
+        }
+        .back-button {
+            display: inline-block;
+            margin: 20px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-button:hover {
+            background: #45a049;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>양궁 게임</h1>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="score">점수: 0</div>
+        <div id="instructions">
+            마우스로 조준하고 클릭하여 발사하세요!<br>
+            화살이 과녁의 중앙에 가까울수록 높은 점수를 얻습니다.
+        </div>
+        <a href="index.html" class="back-button">메인으로 돌아가기</a>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        
+        let score = 0;
+        let bowX = 100;
+        let bowY = canvas.height / 2;
+        let targetX = canvas.width - 100;
+        let targetY = canvas.height / 2;
+        let arrowX = bowX;
+        let arrowY = bowY;
+        let isArrowFlying = false;
+        let arrowSpeed = 0;
+        let arrowAngle = 0;
+        
+        // 과녁 그리기
+        function drawTarget() {
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, 50, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff0000';
+            ctx.fill();
+            ctx.closePath();
+            
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, 35, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.closePath();
+            
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, 20, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff0000';
+            ctx.fill();
+            ctx.closePath();
+            
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.closePath();
+        }
+        
+        // 활 그리기
+        function drawBow() {
+            ctx.beginPath();
+            ctx.moveTo(bowX, bowY - 20);
+            ctx.lineTo(bowX, bowY + 20);
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+            ctx.closePath();
+        }
+        
+        // 화살 그리기
+        function drawArrow() {
+            if (isArrowFlying) {
+                ctx.save();
+                ctx.translate(arrowX, arrowY);
+                ctx.rotate(arrowAngle);
+                
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(30, 0);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 화살촉
+                ctx.beginPath();
+                ctx.moveTo(30, 0);
+                ctx.lineTo(25, -5);
+                ctx.lineTo(25, 5);
+                ctx.fillStyle = '#000';
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        // 게임 업데이트
+        function update() {
+            if (isArrowFlying) {
+                arrowX += Math.cos(arrowAngle) * arrowSpeed;
+                arrowY += Math.sin(arrowAngle) * arrowSpeed;
+                
+                // 화살이 과녁에 닿았는지 확인
+                const distance = Math.sqrt(
+                    Math.pow(arrowX - targetX, 2) + 
+                    Math.pow(arrowY - targetY, 2)
+                );
+                
+                if (distance < 50) {
+                    // 점수 계산 (중앙에 가까울수록 높은 점수)
+                    const points = Math.floor((50 - distance) * 2);
+                    score += points;
+                    scoreElement.textContent = `점수: ${score}`;
+                    resetArrow();
+                }
+                
+                // 화살이 화면을 벗어났는지 확인
+                if (arrowX > canvas.width || arrowX < 0 || 
+                    arrowY > canvas.height || arrowY < 0) {
+                    resetArrow();
+                }
+            }
+        }
+        
+        // 화살 초기화
+        function resetArrow() {
+            isArrowFlying = false;
+            arrowX = bowX;
+            arrowY = bowY;
+        }
+        
+        // 게임 루프
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawTarget();
+            drawBow();
+            drawArrow();
+            update();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 마우스 이벤트 처리
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (!isArrowFlying) {
+                arrowAngle = Math.atan2(mouseY - bowY, mouseX - bowX);
+            }
+        });
+        
+        canvas.addEventListener('click', () => {
+            if (!isArrowFlying) {
+                isArrowFlying = true;
+                arrowSpeed = 15;
+            }
+        });
+        
+        // 게임 시작
+        gameLoop();
+    </script>
+</body>
+</html> 
